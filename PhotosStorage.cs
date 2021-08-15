@@ -8,12 +8,12 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
-namespace Azure_Functions
+namespace Photos
 {
-    public static class Orchastrator
+    public static class PhotosStorage
     {
-        [FunctionName("Orchastrator")]
-        public static async Task<IActionResult> Run(
+        [FunctionName("PhotosStorage")]
+        public static async Task<IActionResult> RunAsync(
             [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
             ILogger log)
         {
