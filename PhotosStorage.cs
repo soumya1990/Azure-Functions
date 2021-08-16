@@ -6,30 +6,31 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Azure.Storage.Blob;
 using Newtonsoft.Json;
-
+using Photos.Models;
 namespace Photos
 {
     public static class PhotosStorage
     {
         [FunctionName("PhotosStorage")]
-        public static async Task<IActionResult> RunAsync(
-            [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
-            ILogger log)
+        public static async Task<IActionResult> Run(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
+            [Blob("photos", FileAccess.ReadWrite,Connection = Literals.StorageConnectionString)] CloudBlobContainer blobContainer,
+            ILogger logger)
         {
-            log.LogInformation("C# HTTP trigger function processed a request.");
+            logger.LogInformation("C# HTTP trigger function photo storage request");
+            var body = await new StreamReader(req.Body).ReadToEndAsync();
+            var request = JsonConvert.DeserializeObject<PhotoUploadModel>(body);
+            var photoId = Guid.NewGuid();
+            var photoName = $"{photoId}.jpg";
+            await blobContainer.CreateIfNotExistsAsync();
+            var cloudBlockBlob = blobContainer.GetBlockBlobReference(photoName);
+            var photoBytes = Convert.FromBase64String(request.Photo);
+            await cloudBlockBlob.UploadFromByteArrayAsync(photoBytes,0,photoBytes.Length);
+            logger?.LogInformation($"Successfully uploaded photo = {photoId}.jpg");
+            return new OkObjectResult(photoId);
 
-            string name = req.Query["name"];
-
-            string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            dynamic data = JsonConvert.DeserializeObject(requestBody);
-            name = name ?? data?.name;
-
-            string responseMessage = string.IsNullOrEmpty(name)
-                ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
-                : $"Hello, {name}. This HTTP triggered function executed successfully.";
-
-            return new OkObjectResult(responseMessage);
         }
     }
 }
